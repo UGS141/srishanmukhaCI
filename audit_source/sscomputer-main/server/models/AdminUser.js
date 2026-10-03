@@ -7,11 +7,13 @@ const adminUserSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: {
       type: String,
-      enum: ['SUPER ADMIN', 'ADMIN', 'COUNSELLOR', 'CONTENT MANAGER', 'TRAINER', 'VIEWER'],
+      enum: ['SUPER ADMIN', 'ADMIN', 'COUNSELLOR', 'CONTENT MANAGER', 'TRAINER', 'PLACEMENT MANAGER', 'VIEWER'],
       default: 'SUPER ADMIN',
     },
     permissions: [{ type: String }],
     avatar: { type: String },
+    status: { type: String, enum: ['ACTIVE', 'DISABLED'], default: 'ACTIVE', index: true },
+    sessionVersion: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

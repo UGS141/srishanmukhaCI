@@ -61,10 +61,13 @@ export const apiService = {
   },
 
   // Admin Logout
-  logout: () => {
+  logout: async () => {
+    await apiService.request('/api/auth/logout', 'POST');
     localStorage.removeItem('ssci_jwt_token');
     localStorage.removeItem('ssci_user');
   },
+
+  me: async () => apiService.request('/api/auth/me'),
 
   // Submit Enquiry (Genuine Backend Call — No Fake Success)
   submitEnquiry: async (payload: EnquiryPayload & { preferredTiming?: string }): Promise<{ success: boolean; message: string }> => {

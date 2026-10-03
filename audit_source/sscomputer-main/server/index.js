@@ -28,6 +28,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
 // CORS Configuration
 const allowedOrigins = [
   process.env.FRONTEND_URL,
@@ -44,7 +54,6 @@ app.use(
       if (
         !origin ||
         allowedOrigins.includes(origin) ||
-        (typeof origin === 'string' && origin.endsWith('.vercel.app')) ||
         process.env.NODE_ENV !== 'production'
       ) {
         callback(null, true);
@@ -56,7 +65,7 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: '256kb' }));
 
 // In-Memory Rate Limiter Middleware (Zero-Dependency, Sliding Window)
 const createRateLimiter = ({ windowMs = 60 * 1000, maxHits = 10, message = 'Too many requests. Please try again later.' }) => {
@@ -114,9 +123,10 @@ app.get('/health', (req, res) => {
 // ----------------------------------------------------
 app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password are required.' });
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    if (!email || !password || email.length > 254 || password.length > 128) {
+      return res.status(422).json({ success: false, message: 'A valid email and password are required.' });
     }
 
     const secret = process.env.JWT_SECRET;
@@ -135,7 +145,11 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, secret, { expiresIn: '24h' });
+    const token = jwt.sign(
+      { sub: user._id.toString(), role: user.role, type: 'access', sessionVersion: Number(user.sessionVersion || 0) },
+      secret,
+      { expiresIn: '15m' }
+    );
 
     await logAudit(user.name, 'LOGIN', 'Auth', `Admin user "${user.name}" logged in successfully.`);
 
@@ -143,7 +157,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       success: true,
       token,
       user: {
-        id: user._id,
+        id: user._id.toString(),
         name: user.name,
         email: user.email,
         role: user.role,
@@ -156,7 +170,17 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 });
 
 app.get('/api/auth/me', authenticateToken, (req, res) => {
-  res.json({ success: true, user: req.user });
+  res.json({ success: true, user: req.user.toObject ? req.user.toObject() : req.user });
+});
+
+app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+  try {
+    await AdminUser.updateOne({ _id: req.user._id }, { $inc: { sessionVersion: 1 } });
+    await logAudit(req.user.name, 'LOGOUT', 'Auth', `Admin user "${req.user.name}" logged out.`);
+    res.json({ success: true, message: 'Logged out successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Unable to complete logout.' });
+  }
 });
 
 // ----------------------------------------------------
@@ -257,12 +281,17 @@ app.get('/api/leads', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 
 
 app.post('/api/leads', leadLimiter, async (req, res) => {
   try {
-    const { name, phone } = req.body;
+    const allowedFields = ['name', 'phone', 'email', 'courseInterested', 'preferredBatch', 'message', 'source'];
+    const leadInput = Object.fromEntries(allowedFields.filter((field) => Object.prototype.hasOwnProperty.call(req.body, field)).map((field) => [field, req.body[field]]));
+    const { name, phone } = leadInput;
     if (!name || typeof name !== 'string' || name.trim().length < 2 || name.length > 100) {
       return res.status(400).json({ success: false, message: 'A valid name (2 to 100 characters) is required.' });
     }
-    if (!phone || typeof phone !== 'string' || phone.trim().length < 8 || phone.length > 20) {
+    if (!phone || typeof phone !== 'string' || !/^[+()\-\s\d]{8,20}$/.test(phone.trim())) {
       return res.status(400).json({ success: false, message: 'A valid phone number (8 to 20 digits) is required.' });
+    }
+    if (leadInput.email && (typeof leadInput.email !== 'string' || leadInput.email.length > 254)) {
+      return res.status(422).json({ success: false, message: 'A valid email address is required.' });
     }
 
     const latestLead = await Lead.findOne().sort({ createdAt: -1 });
@@ -280,13 +309,13 @@ app.post('/api/leads', leadLimiter, async (req, res) => {
     const leadId = `LEAD-${nextNumber}`;
     const newLead = await Lead.create({
       id: leadId,
-      ...req.body,
+      ...leadInput,
       status: 'New',
       timeline: [
         {
           id: `t-${Date.now()}`,
           title: 'Enquiry Received',
-          description: `Received via ${req.body.source || 'Website'}.`,
+          description: `Received via ${leadInput.source || 'Website'}.`,
           timestamp: new Date().toISOString(),
           type: 'system',
         },

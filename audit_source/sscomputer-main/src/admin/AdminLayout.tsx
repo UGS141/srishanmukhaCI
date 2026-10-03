@@ -31,6 +31,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { cmsStore, type AdminUser, type Lead } from './cmsStore';
+import { apiService } from '../services/api';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -41,6 +42,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
 
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(cmsStore.getCurrentUser());
+  const [authChecking, setAuthChecking] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -62,6 +64,26 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    apiService.me().then((response) => {
+      if (!active) return;
+      if (!response?.success || !response.user) {
+        cmsStore.clearSession();
+        navigate('/admin/login', { replace: true });
+        return;
+      }
+      cmsStore.hydrateCurrentUser(response.user as AdminUser);
+      setCurrentUser(response.user as AdminUser);
+      setAuthChecking(false);
+    }).catch(() => {
+      if (!active) return;
+      cmsStore.clearSession();
+      navigate('/admin/login', { replace: true });
+    });
+    return () => { active = false; };
+  }, [navigate]);
 
   // Keyboard shortcut Ctrl+K / Cmd+K for search
   useEffect(() => {
@@ -177,6 +199,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   };
 
   const searchResults = getSearchResults();
+
+  if (authChecking || !currentUser) {
+    return (
+      <div className="min-h-screen bg-[#F6F9F8] flex items-center justify-center text-sm font-semibold text-[#087F78]">
+        Verifying secure admin session…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F6F9F8] text-[#123B3A] font-sans flex flex-col">

@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Lock, Mail, ArrowRight, CheckCircle2, Building2 } from 'lucide-react';
-import { cmsStore, type AdminUser } from '../cmsStore';
+import { Shield, Lock, Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { cmsStore } from '../cmsStore';
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@sscomputer.in');
-  const [password, setPassword] = useState('admin123');
-  const [selectedRole, setSelectedRole] = useState<AdminUser['role']>('SUPER ADMIN');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -28,24 +27,9 @@ export const AdminLoginPage: React.FC = () => {
         return;
       }
 
-      // If backend login fails (e.g. server sleeping/offline or connection error),
-      // allow fallback local login for default admin credentials so admin access is never locked out
-      if (email === 'admin@sscomputer.in' && password === 'admin123') {
-        cmsStore.login(email, selectedRole);
-        setLoading(false);
-        navigate('/admin');
-        return;
-      }
-
       setError(res.message || 'Authentication failed. Please check your credentials and server connection.');
       setLoading(false);
     } catch (err: any) {
-      if (email === 'admin@sscomputer.in' && password === 'admin123') {
-        cmsStore.login(email, selectedRole);
-        setLoading(false);
-        navigate('/admin');
-        return;
-      }
       setError(err.message || 'Server login failed. Please check your connection.');
       setLoading(false);
     }
@@ -120,23 +104,6 @@ export const AdminLoginPage: React.FC = () => {
                 required
               />
             </div>
-          </div>
-
-          {/* Role Preset Selector */}
-          <div>
-            <label className="block text-xs font-bold text-[#123B3A] mb-1.5 uppercase tracking-wider">
-              Login Role Preset
-            </label>
-            <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as AdminUser['role'])}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-[#087F78] bg-teal-50/50 focus:outline-none focus:border-[#087F78]"
-            >
-              <option value="SUPER ADMIN">Super Admin (Full Master Control)</option>
-              <option value="ADMIN">Admin (Website & CRM Control)</option>
-              <option value="COUNSELLOR">Admissions Counsellor (Leads & Follow-ups)</option>
-              <option value="CONTENT MANAGER">Content Manager (Blog & Courses)</option>
-            </select>
           </div>
 
           <button

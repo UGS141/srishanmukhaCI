@@ -313,13 +313,7 @@ const defaultInitialState = {
       timestamp: new Date().toISOString()
     }
   ] as AuditLog[],
-  currentUser: {
-    id: 'user-admin',
-    name: 'Sri Shanmukha Admin',
-    email: 'admin@sscomputer.in',
-    role: 'SUPER ADMIN',
-    permissions: ['all']
-  } as AdminUser | null
+  currentUser: null as AdminUser | null
 };
 
 // Singleton Data Engine
@@ -503,6 +497,18 @@ class CMSStore {
     return this.state.currentUser;
   }
 
+  public hydrateCurrentUser(user: AdminUser) {
+    this.state.currentUser = user;
+    this.saveToStorage();
+  }
+
+  public clearSession() {
+    localStorage.removeItem('ssci_jwt_token');
+    localStorage.removeItem('ssci_user');
+    this.state.currentUser = null;
+    this.saveToStorage();
+  }
+
   // --- MUTATORS (WITH AUDIT LOGGING & AWAITED API WRITES) ---
 
   // Auth
@@ -524,32 +530,8 @@ class CMSStore {
     return { success: false, message: res?.message || 'Authentication failed. Please check credentials or backend connection.' };
   }
 
-  public login(email: string, role: AdminUser['role'] = 'ADMIN'): boolean {
-    const nameMap: Record<string, string> = {
-      'SUPER ADMIN': 'Master Admin',
-      'ADMIN': 'SSCI Admin',
-      'COUNSELLOR': 'Admissions Counselor',
-      'CONTENT MANAGER': 'Content Editor',
-      'TRAINER': 'Lead Faculty Trainer',
-      'VIEWER': 'Guest Analyst'
-    };
-
-    const user: AdminUser = {
-      id: `user-${Date.now()}`,
-      name: nameMap[role] || 'SSCI Staff',
-      email: email,
-      role: role,
-      permissions: ['all']
-    };
-
-    this.state.currentUser = user;
-    this.logAudit(user.name, 'LOGIN', 'Authentication', `User logged in with role ${role}.`);
-    this.saveToStorage();
-    return true;
-  }
-
-  public logout() {
-    apiService.logout();
+  public async logout() {
+    await apiService.logout();
     if (this.state.currentUser) {
       this.logAudit(this.state.currentUser.name, 'LOGOUT', 'Authentication', 'User logged out.');
     }
@@ -705,18 +687,7 @@ class CMSStore {
       if (res?.success && res.lead) {
         const idx = this.state.leads.findIndex((l) => l.id === id);
         if (idx >= 0) this.state.leads[idx] = res.lead;
-      } else {
-        const oldStatus = lead.status;
-        lead.status = newStatus;
-        lead.updatedAt = new Date().toISOString();
-        lead.timeline.unshift({
-          id: `t-${Date.now()}`,
-          title: 'Status Updated',
-          description: `Changed status from ${oldStatus} to ${newStatus}.`,
-          timestamp: new Date().toISOString(),
-          type: 'status_change'
-        });
-      }
+      } else throw new Error('Lead status was not persisted by the backend.');
       this.logAudit(this.getUserName(), 'UPDATE_LEAD_STATUS', 'CRM', `Updated lead ${id} status to ${newStatus}.`);
       this.saveToStorage();
     }
@@ -729,51 +700,14 @@ class CMSStore {
       if (res?.success && res.lead) {
         const idx = this.state.leads.findIndex((l) => l.id === id);
         if (idx >= 0) this.state.leads[idx] = res.lead;
-      } else {
-        const author = this.getUserName();
-        const note: LeadNote = {
-          id: `note-${Date.now()}`,
-          text,
-          author,
-          timestamp: new Date().toISOString()
-        };
-        lead.notes.unshift(note);
-        lead.timeline.unshift({
-          id: `t-${Date.now()}`,
-          title: 'Note Added',
-          description: `"${text}"`,
-          timestamp: new Date().toISOString(),
-          type: 'note'
-        });
-      }
+      } else throw new Error('Lead note was not persisted by the backend.');
       this.logAudit(this.getUserName(), 'ADD_LEAD_NOTE', 'CRM', `Added note to lead ${id}.`);
       this.saveToStorage();
     }
   }
 
-  public convertLeadToStudent(id: string) {
-    const lead = this.state.leads.find((l) => l.id === id);
-    if (lead) {
-      lead.status = 'Converted';
-      lead.updatedAt = new Date().toISOString();
-
-      const newStudent: Student = {
-        id: `STD-${Date.now().toString().slice(-4)}`,
-        studentId: `SSCI-STD-2026-${(this.state.students.length + 1).toString().padStart(2, '0')}`,
-        name: lead.name,
-        phone: lead.phone,
-        email: lead.email || `${lead.name.toLowerCase().replace(/\s+/g, '')}@student.ssci`,
-        course: lead.courseInterested || 'Computer Fundamentals',
-        batch: lead.preferredBatch || 'Regular Batch',
-        admissionDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-        status: 'Active',
-        certificatesIssued: []
-      };
-
-      this.state.students.unshift(newStudent);
-      this.logAudit(this.getUserName(), 'CONVERT_LEAD', 'CRM', `Converted lead ${id} (${lead.name}) into registered student ${newStudent.studentId}.`);
-      this.saveToStorage();
-    }
+  public async convertLeadToStudent(id: string) {
+    throw new Error(`Lead conversion is not yet available through a backend transaction for ${id}.`);
   }
 
   // Blog CMS
