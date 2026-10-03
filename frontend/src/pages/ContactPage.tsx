@@ -218,9 +218,9 @@ export const ContactPage: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4" data-testid="public-enquiry-form">
                   {errorMsg && (
-                    <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                    <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold" data-testid="public-enquiry-error-message">
                       {errorMsg}
                     </div>
                   )}
@@ -235,6 +235,7 @@ export const ContactPage: React.FC = () => {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] focus:ring-2 focus:ring-teal-500/20 text-sm font-medium outline-none"
+                      data-testid="public-enquiry-name-input"
                     />
                   </div>
 
@@ -250,6 +251,7 @@ export const ContactPage: React.FC = () => {
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] focus:ring-2 focus:ring-teal-500/20 text-sm font-medium outline-none"
+                        data-testid="public-enquiry-phone-input"
                       />
                     </div>
 
@@ -263,6 +265,7 @@ export const ContactPage: React.FC = () => {
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] focus:ring-2 focus:ring-teal-500/20 text-sm font-medium outline-none"
+                        data-testid="public-enquiry-email-input"
                       />
                     </div>
                   </div>
@@ -275,6 +278,7 @@ export const ContactPage: React.FC = () => {
                       value={formData.courseInterested}
                       onChange={(e) => setFormData({ ...formData, courseInterested: e.target.value })}
                       className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] text-sm font-medium outline-none bg-white"
+                      data-testid="public-enquiry-course-select"
                     >
                       {COURSES_DATA.map((course) => (
                         <option key={course.slug} value={course.title}>
@@ -292,6 +296,7 @@ export const ContactPage: React.FC = () => {
                       value={formData.preferredBatch}
                       onChange={(e) => setFormData({ ...formData, preferredBatch: e.target.value })}
                       className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] text-sm font-medium outline-none bg-white"
+                      data-testid="public-enquiry-timing-select"
                     >
                       <option value="Morning (10:00 AM - 12:00 PM)">Morning Batch (10:00 AM – 12:00 PM)</option>
                       <option value="Afternoon (02:00 PM - 04:00 PM)">Afternoon Batch (02:00 PM – 04:00 PM)</option>
@@ -310,6 +315,7 @@ export const ContactPage: React.FC = () => {
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                       className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:border-[#087F78] text-sm font-medium outline-none"
+                      data-testid="public-enquiry-message-textarea"
                     />
                   </div>
 
@@ -317,6 +323,7 @@ export const ContactPage: React.FC = () => {
                     type="submit"
                     disabled={loading}
                     className="w-full py-3.5 px-4 rounded-xl text-sm font-bold text-white brand-gradient-bg shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                    data-testid="public-enquiry-submit-button"
                   >
                     {loading ? (
                       <>

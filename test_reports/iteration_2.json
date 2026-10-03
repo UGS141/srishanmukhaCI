@@ -1,0 +1,46 @@
+{
+  "summary": "Phase 1 SSCI backend + frontend verification. 33/33 pytest backend tests pass covering public GETs, auth, RBAC, lead validation + mass-assignment protection, courses/batches CRUD, lead->student conversion (incl. idempotent 409 re-convert), CORS preflight, and error hygiene. Frontend verified: real SSCI homepage loads at preview URL (no Emergent placeholder), /admin/login works with correct data-testids, wrong credentials shows login-error-message, correct credentials redirect to /admin, /admin/enquiries renders with filter tabs, and end-to-end public enquiry at /contact successfully POSTs to /api/leads and renders 'Enquiry Submitted Successfully!' only after the backend 200 response. All QA records cleaned up afterwards.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/courses, /api/batches, /api/leads, etc.", "issue": "Mongoose documents returned to clients include MongoDB '_id' field (and __v on some). Code-review guideline says _id must be excluded from responses. Low-risk info disclosure but still a leak."},
+      {"endpoint": "/api/auth/login", "issue": "Returns JWT in JSON body (bearer flow). Playbook recommends httpOnly cookie delivery for browser-facing admin; current approach is a conscious design choice but worth documenting. No cookie is set."},
+      {"endpoint": "CORS", "issue": "In non-production (NODE_ENV !== 'production') any origin is accepted. Fine for dev preview but ensure NODE_ENV=production is set in prod deploy."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Public /contact enquiry form", "issues": ["Form inputs (full name, phone, email, course select, timing select, message textarea, Send Enquiry button) have NO data-testid attributes. All interactive elements must have data-testid per project standards; required for stable automated regression."]},
+      {"screen": "Homepage header", "issues": ["'Enquire Now' CTA in header navigates to /contact rather than opening a modal; works but a quick-enquiry modal would improve conversion. Not a defect, just UX note."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_ssci_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Strip MongoDB '_id' (and ideally '__v') from all public JSON responses (use toJSON transform or explicit projection).",
+    "Add data-testid attributes to the /contact enquiry form fields and Send Enquiry button so admin+public forms are both automatable.",
+    "Confirm production deploy sets NODE_ENV=production so CORS allowlist is enforced."
+  ],
+  "critical_code_review_comments": [
+    "server/index.js is 752 lines — exceeds the 700-line guideline. Split into route modules (auth, crm, courses, website, blog, certificates) for maintainability.",
+    "GET endpoints return raw Mongoose docs, exposing _id and __v. Add a mongoose toJSON transform in each model (or a response serializer middleware) to strip internals.",
+    "/api/auth/login response contains the JWT in the body only; frontend stores it in cmsStore (localStorage-equivalent). Consider httpOnly cookie delivery and double-submit CSRF token.",
+    "In-memory sliding-window rate limiter is per-process; behind multiple instances or restarts it offers no real protection. OK for Phase 1 but flag for Phase 2.",
+    "Lead conversion runs without transactions when Mongo is standalone and uses compensating cleanup; correct for dev but note risk of partial state under crash."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_ssci_backend.py",
+    "/app/test_reports/iteration_2.json"
+  ],
+  "success_rate": {"backend": "100% (33/33 pytest)", "frontend": "100% of Phase 1 critical flows verified (home, admin login error+success, enquiries listing, public enquiry submission)"},
+  "test_credentials": "admin@ssci.local / 63f12XvsQoBGkpDjTdZQqg (from /app/memory/test_credentials.md). Verified working.",
+  "seed_data_creation": "No seed data created. All QA leads/students/courses/batches created during tests were cleaned from ssci_dev via mongosh after the run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend proxy architecture (Python ASGI on 8001 -> Node Express on 8002) works end-to-end via preview URL. Admin auth tests pass against real Mongo. If retesting login rate limiter, note loginLimiter is 10 hits / 15 min per IP — can block admin login for 15 min; intentionally not exercised. Lead rate limiter is 15/min and also not stress-tested to avoid interfering with other tests. Pytest file /app/backend/tests/test_ssci_backend.py is the regression suite; reuse it.",
+  "rca of the issue": "No blocking issues. Minor finding: raw _id leaks in all GET endpoints due to missing toJSON transform on Mongoose schemas — fix by adding `schema.set('toJSON', { transform: (_, ret) => { delete ret._id; delete ret.__v; return ret; } })` across models or a central serializer. UI finding: contact form lacks data-testids — add attributes to each input and the submit button."
+}

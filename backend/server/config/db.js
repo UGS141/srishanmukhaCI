@@ -1,6 +1,24 @@
 import mongoose from 'mongoose';
 import dns from 'dns';
 
+// Global Mongoose plugin: strip Mongo internals from all JSON responses.
+// Registered BEFORE any model schema is compiled (db.js is the first local import
+// in server/index.js), so every schema inherits this transform.
+mongoose.plugin((schema) => {
+  const hasBusinessId = schema.path('id');
+  schema.set('toJSON', {
+    virtuals: Boolean(hasBusinessId) === false ? false : false,
+    versionKey: false,
+    transform: (_doc, ret) => {
+      delete ret._id;
+      delete ret.__v;
+      if (ret.password) delete ret.password;
+      if (ret.sessionVersion !== undefined) delete ret.sessionVersion;
+      return ret;
+    },
+  });
+});
+
 export const connectDB = async () => {
   const mongoURI = process.env.MONGO_URL;
   const databaseName = process.env.DB_NAME;

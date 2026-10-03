@@ -170,7 +170,16 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
 });
 
 app.get('/api/auth/me', authenticateToken, (req, res) => {
-  res.json({ success: true, user: req.user.toObject ? req.user.toObject() : req.user });
+  res.json({
+    success: true,
+    user: {
+      id: req.user._id.toString(),
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role,
+      permissions: req.user.permissions,
+    },
+  });
 });
 
 app.post('/api/auth/logout', authenticateToken, async (req, res) => {
