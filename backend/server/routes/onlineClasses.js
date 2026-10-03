@@ -75,16 +75,17 @@ router.post('/', authenticateToken, authorizeRoles(...WRITE_ROLES), async (req, 
     if (!payload.title || typeof payload.title !== 'string' || payload.title.trim().length < 3) {
       return res.status(400).json({ success: false, message: 'Title (min 3 characters) is required.' });
     }
-    const baseSlug = slugify(req.body.slug || payload.title);
-    let slug = baseSlug || `online-class-${Date.now()}`;
-    // Ensure uniqueness
+    // Slug and id are server-generated from the trusted title only. Client-supplied slug/id are ignored.
+    const baseSlug = slugify(payload.title) || `online-class-${Date.now()}`;
+    let slug = baseSlug;
     let suffix = 1;
     while (await OnlineClass.exists({ slug })) {
       slug = `${baseSlug}-${suffix++}`;
       if (suffix > 50) break;
     }
     const id = `OC-${Date.now().toString().slice(-8)}`;
-    const created = await OnlineClass.create({ ...payload, id, slug });
+    // Force new online classes to start in Draft; status transitions must go through PUT.
+    const created = await OnlineClass.create({ ...payload, id, slug, status: 'Draft' });
     res.status(201).json({ success: true, onlineClass: created });
   } catch (err) {
     console.error('OnlineClass create error:', err);

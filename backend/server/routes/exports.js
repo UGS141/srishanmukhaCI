@@ -14,9 +14,16 @@ const EXPORT_ROLES = {
   batches: ['SUPER ADMIN', 'ADMIN', 'CONTENT MANAGER'],
 };
 
+const slugForFilename = (label) =>
+  String(label)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 60) || 'export';
+
 const safeFilename = (prefix) => {
   const ts = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
-  return `ssci-${prefix}-${ts}`;
+  return `ssci-${slugForFilename(prefix)}-${ts}`;
 };
 
 const escapeCSV = (value) => {
@@ -203,7 +210,7 @@ const writeCSV = (res, dataset, rows) => {
   for (const row of rows) {
     lines.push(dataset.columns.map((c) => escapeCSV(row[c.key] ?? '')).join(','));
   }
-  const filename = `${safeFilename(dataset.label.toLowerCase().replace(/\s+/g, '-'))}.csv`;
+  const filename = `${safeFilename(dataset.label)}.csv`;
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(lines.join('\r\n'));
@@ -252,7 +259,7 @@ const writeXLSX = async (res, dataset, rows, filterSummary) => {
   sheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: dataset.columns.length } };
   sheet.views = [{ state: 'frozen', ySplit: 4 }];
 
-  const filename = `${safeFilename(dataset.label.toLowerCase().replace(/\s+/g, '-'))}.xlsx`;
+  const filename = `${safeFilename(dataset.label)}.xlsx`;
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   await workbook.xlsx.write(res);
@@ -260,7 +267,7 @@ const writeXLSX = async (res, dataset, rows, filterSummary) => {
 };
 
 const writePDF = (res, dataset, rows, filterSummary) => {
-  const filename = `${safeFilename(dataset.label.toLowerCase().replace(/\s+/g, '-'))}.pdf`;
+  const filename = `${safeFilename(dataset.label)}.pdf`;
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 

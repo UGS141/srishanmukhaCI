@@ -1,0 +1,49 @@
+{
+  "summary": "Phase 2 (Live Dashboard, Online Classes CRUD, Filtered Exports) + Phase 1 regression validated. 61/62 pytest cases pass (Phase 2 suite 28/29 + Phase 1 suite 33/33). One real backend bug: slug mass-assignment on POST /api/online-classes. Admin UI end-to-end verified: login works, Live Dashboard renders real KPIs + snapshot timestamp refreshes, Online Classes page creates/lists/edits/deletes classes, Enquiries/Students/Batches ExportButton triggers actual browser downloads for CSV/XLSX/PDF.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/online-classes", "issue": "Slug mass-assignment protection broken. onlineClasses.js L78 does `slugify(req.body.slug || payload.title)` reading req.body.slug BEFORE the ALLOWED_FIELDS whitelist. A client supplying `{title:'X',slug:'garbage-slug'}` has the attacker-controlled slug persisted (slugified) instead of deriving it from title. Spec explicitly states slug must be derived server-side from title. Fix: use `slugify(payload.title)` only (ignore req.body.slug), or remove 'slug' acceptance entirely.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/exports/enquiries", "issue": "Content-Disposition filename is `ssci-enquiries-&-leads-{ts}.csv` because dataset label 'Enquiries & Leads' is lowercased/space-joined but '&' is preserved. Spec called for `ssci-enquiries-{ts}.csv`. Consider stripping non-alphanumerics in safeFilename slug (same for 'ssci-students-roster-...', 'ssci-batches-schedule-...')."},
+      {"endpoint": "POST /api/online-classes", "issue": "status field is in ALLOWED_FIELDS, so clients can create a class directly in 'Active' status, bypassing a Draft→Active workflow. Review spec says 'default status Draft' - OK as default - but consider server-forcing status='Draft' on create and only allowing transition via PUT."},
+      {"endpoint": "GET /api/dashboard/analytics", "issue": "followUpDate is stored as string on Lead model; defensive parsing with new Date() is lenient (accepts e.g. '2026/13/40'). Low-impact but a strict ISO regex guard would be safer."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin Online Classes - Create modal", "issues": ["course select uses native HTML <select> (observed tagName=SELECT) instead of a shadcn/Radix Select; inconsistent with rest of admin UI styling. Not blocking."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase2_backend.py",
+    "/app/backend/tests/test_ssci_backend.py",
+    "/app/test_reports/pytest/phase2_results.xml"
+  ],
+  "action_items": [
+    "FIX: In /app/backend/server/routes/onlineClasses.js, replace `slugify(req.body.slug || payload.title)` with `slugify(payload.title)` so the slug is always derived from the server-trusted title (mass-assignment protection).",
+    "Clean up export filenames: strip '&' and ambiguous chars from the dataset-label slug used in Content-Disposition (expected `ssci-enquiries-{ts}.csv`, actual `ssci-enquiries-&-leads-{ts}.csv`).",
+    "Consider forcing status='Draft' on POST /api/online-classes and only allowing status transitions through PUT.",
+    "(Carried over from iter_2) Confirm NODE_ENV=production on prod deploy so CORS allowlist is enforced."
+  ],
+  "critical_code_review_comments": [
+    "onlineClasses.js reads unvetted req.body.slug before whitelisting - classic mass-assignment smell. The ALLOWED_FIELDS pattern is applied to payload but then bypassed for slug derivation. All derived identifiers (id, slug) must come exclusively from whitelisted or server-generated values.",
+    "exports.js is 390+ lines combining filter builders, dataset config, CSV/XLSX/PDF writers, and route wiring - fine for Phase 2 but on the edge of maintainability. If PDF styling evolves, split writers into /routes/exports/{csv,xlsx,pdf}.js.",
+    "Dashboard analytics performs Lead.find({}).lean() to compute follow-up buckets in Node. For large lead sets this is O(n) over the wire; a Mongo aggregation using $facet / $cond on parsed dates would scale better once leads > 10k.",
+    "Dashboard payload leaks nothing sensitive but conversionRate is rounded in server (good); confirm the UI handles conversionRate=0 when totalLeads=0 (verified visually - shows '0%' correctly)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase2_backend.py (new)",
+    "/app/test_reports/iteration_3.json",
+    "/app/test_reports/pytest/phase2_results.xml"
+  ],
+  "success_rate": {"backend": "98.4% (61/62 pytest; 1 failure is a real security bug)", "frontend": "100% of Phase 2 critical UI flows verified (login, dashboard KPIs + refresh, online-class create+edit+delete via admin, 3 export triggers each initiating real downloads)"},
+  "test_credentials": "admin@ssci.local / 63f12XvsQoBGkpDjTdZQqg (verified). Role test users seeded by test suite: qa-viewer@/qa-trainer@/qa-content@/qa-counsellor@ssci.invalid - auto-cleaned on teardown.",
+  "seed_data_creation": "Test fixture seed_role_users inserts 4 role-specific AdminUser records (VIEWER, TRAINER, CONTENT MANAGER, COUNSELLOR) in ssci_dev.adminusers with bcrypt-hashed passwords; teardown deletes them. All QA leads/students/onlineclasses auto-cleaned via test_zzz_cleanup and a final mongosh sweep.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Reuse /app/backend/tests/test_phase2_backend.py as Phase 2 regression. The one failing test (TestOnlineClasses::test_create_as_admin_generates_id_slug) is intentional - it pins the slug mass-assignment bug. Once main agent fixes onlineClasses.js L78 to ignore req.body.slug, this test will pass. UI selectors used: admin-login-email-input/password-input/submit-button, admin-dashboard, dashboard-generated-at, dashboard-refresh-button, kpi-{total-enquiries,conversion-rate,follow-ups,students,courses,certificates}, admin-online-classes-page, online-classes-create-button, online-class-{title-input,course-select,save-button}, online-class-edit-{slug}, {enquiries,students,batches}-export-trigger-button + -{csv,xlsx,pdf}-button. Login limiter is 10/15min per IP so avoid retrying failed logins.",
+  "rca of the issue": "Mass-assignment slug bug RCA: In /app/backend/server/routes/onlineClasses.js the create handler calls `pickAllowed(req.body)` which correctly filters payload to the ALLOWED_FIELDS whitelist (which does NOT include 'slug'). Immediately after however, line 78 computes `const baseSlug = slugify(req.body.slug || payload.title);` - reading `req.body.slug` directly from the raw request, defeating the whitelist. Reproduction: `POST /api/online-classes {title:'QA Online Python Masters', slug:'garbage-slug'}` returns `onlineClass.slug === 'garbage-slug'` instead of `'qa-online-python-masters'`. Mitigation: change line 78 to `const baseSlug = slugify(payload.title);` (or `slugify(payload.title) || slugify(req.body.slug)` is still wrong - must be title-derived only per spec)."
+}
