@@ -24,9 +24,10 @@ dotenv.config();
 const seedDatabase = async () => {
   console.log('🚀 Initializing MongoDB Atlas Seed Process...');
 
-  const mongoURI = process.env.MONGODB_URI;
-  if (!mongoURI || mongoURI.includes('YOUR_DATABASE_PASSWORD') || mongoURI.includes('<db_password>') || mongoURI.includes('<password>')) {
-    console.error('\n❌ ACTION REQUIRED: Open the .env file in VS Code and replace YOUR_DATABASE_PASSWORD with your real MongoDB Atlas password.\n');
+  const mongoURI = process.env.MONGO_URL;
+  const databaseName = process.env.DB_NAME;
+  if (!mongoURI || !databaseName) {
+    console.error('\n❌ ACTION REQUIRED: MONGO_URL and DB_NAME must be configured before seeding.\n');
     process.exit(1);
   }
 
@@ -40,8 +41,8 @@ const seedDatabase = async () => {
     // 1. Seed Admin User
     const adminCount = await AdminUser.countDocuments();
     if (adminCount === 0) {
-      const email = process.env.SEED_ADMIN_EMAIL || 'admin@sscomputer.in';
-      const password = process.env.SEED_ADMIN_PASSWORD || 'admin123';
+      const email = process.env.SEED_ADMIN_EMAIL;
+      const password = process.env.SEED_ADMIN_PASSWORD;
       if (!email || !password || password.length < 8) {
         console.error('\n❌ SEED ERROR: SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD (min 8 chars) environment variables are required to seed admin user.\n');
         process.exit(1);

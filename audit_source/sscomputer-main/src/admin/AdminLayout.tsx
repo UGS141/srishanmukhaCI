@@ -97,8 +97,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleLogout = () => {
-    cmsStore.logout();
+  const handleLogout = async () => {
+    await cmsStore.logout();
     navigate('/admin/login');
   };
 

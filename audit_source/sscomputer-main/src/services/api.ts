@@ -1,6 +1,10 @@
 import { SITE_CONFIG } from '../config/site';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://sscomputer-api.onrender.com' : '');
+// Platform env contract: prefer VITE_API_URL. Default is relative "" so that same-origin
+// requests to /api/* work with the preview URL's ingress routing (/api/* -> backend:8001).
+// Vite can only expose VITE_* prefixed env vars to the browser, so VITE_API_URL must be
+// used client-side; the backend URL contract is still honored through the empty default.
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export interface EnquiryPayload {
   name: string;
@@ -131,6 +135,9 @@ export const apiService = {
   },
   updateLeadStatus: async (id: string, status: string, noteText?: string) => {
     return await apiService.request(`/api/leads/${id}/status`, 'PUT', { status, noteText });
+  },
+  convertLeadToStudent: async (id: string) => {
+    return await apiService.request(`/api/leads/${id}/convert`, 'POST');
   },
   getCertificates: async () => {
     return await apiService.request('/api/certificates');

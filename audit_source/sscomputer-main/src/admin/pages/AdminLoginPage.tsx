@@ -63,13 +63,13 @@ export const AdminLoginPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs font-semibold flex items-center gap-2 border border-red-200">
+          <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs font-semibold flex items-center gap-2 border border-red-200" data-testid="login-error-message">
             <Shield className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4" data-testid="admin-login-form">
           {/* Email */}
           <div>
             <label className="block text-xs font-bold text-[#123B3A] mb-1.5 uppercase tracking-wider">
@@ -84,6 +84,7 @@ export const AdminLoginPage: React.FC = () => {
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-[#123B3A] focus:outline-none focus:border-[#087F78] focus:ring-2 focus:ring-teal-100 transition-all"
                 placeholder="admin@sscomputer.in"
                 required
+                data-testid="admin-login-email-input"
               />
             </div>
           </div>
@@ -102,6 +103,7 @@ export const AdminLoginPage: React.FC = () => {
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-[#123B3A] focus:outline-none focus:border-[#087F78] focus:ring-2 focus:ring-teal-100 transition-all"
                 placeholder="••••••••"
                 required
+                data-testid="admin-login-password-input"
               />
             </div>
           </div>
@@ -110,6 +112,7 @@ export const AdminLoginPage: React.FC = () => {
             type="submit"
             disabled={loading}
             className="w-full py-3 rounded-xl brand-gradient-bg text-white text-xs font-bold shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+            data-testid="admin-login-submit-button"
           >
             <span>{loading ? 'Authenticating...' : 'Sign In to Workspace'}</span>
             <ArrowRight className="w-4 h-4" />

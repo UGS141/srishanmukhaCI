@@ -26,6 +26,7 @@ export const AdminEnquiriesPage: React.FC = () => {
   // Note form input
   const [noteInput, setNoteInput] = useState('');
   const [followUpDateInput, setFollowUpDateInput] = useState('');
+  const [actionError, setActionError] = useState('');
 
   useEffect(() => {
     const unsubscribe = cmsStore.subscribe(() => {
@@ -59,27 +60,48 @@ export const AdminEnquiriesPage: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleStatusChange = (id: string, newStatus: Lead['status']) => {
-    cmsStore.updateLeadStatus(id, newStatus);
+  const handleStatusChange = async (id: string, newStatus: Lead['status']) => {
+    try {
+      setActionError('');
+      await cmsStore.updateLeadStatus(id, newStatus);
+    } catch (error: any) {
+      setActionError(error?.message || 'Could not update the lead. Please try again.');
+    }
   };
 
-  const handleAddNote = (e: React.FormEvent) => {
+  const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLead || !noteInput.trim()) return;
 
-    cmsStore.addLeadNote(selectedLead.id, noteInput);
-    setNoteInput('');
+    try {
+      setActionError('');
+      await cmsStore.addLeadNote(selectedLead.id, noteInput);
+      setNoteInput('');
+    } catch (error: any) {
+      setActionError(error?.message || 'Could not save the note. Please try again.');
+    }
   };
 
-  const handleConvert = (id: string) => {
+  const handleConvert = async (id: string) => {
     if (window.confirm('Convert this lead into an official registered SSCI Student?')) {
-      cmsStore.convertLeadToStudent(id);
+      try {
+        setActionError('');
+        await cmsStore.convertLeadToStudent(id);
+        setSelectedLead(null);
+      } catch (error: any) {
+        setActionError(error?.message || 'Could not convert this lead. Please try again.');
+      }
     }
   };
 
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header Banner */}
+      {actionError && (
+        <div className="p-4 rounded-2xl bg-red-50 text-red-700 text-xs font-semibold border border-red-200" role="alert">
+          {actionError}
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-teal-100/70 shadow-2xs">
         <div>
           <span className="text-xs font-bold text-[#087F78] uppercase tracking-wider block">CRM & Admissions</span>

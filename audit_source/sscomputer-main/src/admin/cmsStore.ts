@@ -707,7 +707,16 @@ class CMSStore {
   }
 
   public async convertLeadToStudent(id: string) {
-    throw new Error(`Lead conversion is not yet available through a backend transaction for ${id}.`);
+    const res = await apiService.convertLeadToStudent(id);
+    if (!res?.success || !res.lead || !res.student) {
+      throw new Error(res?.message || 'Lead conversion was not persisted by the backend.');
+    }
+    const leadIndex = this.state.leads.findIndex((lead) => lead.id === id);
+    if (leadIndex >= 0) this.state.leads[leadIndex] = res.lead;
+    this.state.students.unshift(res.student);
+    this.logAudit(this.getUserName(), 'CONVERT_LEAD', 'CRM', `Converted lead ${id} into registered student ${res.student.studentId}.`);
+    this.saveToStorage();
+    return res.student;
   }
 
   // Blog CMS

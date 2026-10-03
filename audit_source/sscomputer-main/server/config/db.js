@@ -2,10 +2,11 @@ import mongoose from 'mongoose';
 import dns from 'dns';
 
 export const connectDB = async () => {
-  const mongoURI = process.env.MONGODB_URI;
+  const mongoURI = process.env.MONGO_URL;
+  const databaseName = process.env.DB_NAME;
 
-  if (!mongoURI) {
-    console.error('\n❌ DATABASE CONNECTION FAILED: MONGODB_URI environment variable is not defined.\n');
+  if (!mongoURI || !databaseName) {
+    console.error('\n❌ DATABASE CONNECTION FAILED: MONGO_URL and DB_NAME environment variables are required.\n');
     return false;
   }
 
@@ -17,7 +18,7 @@ export const connectDB = async () => {
 
   try {
     const conn = await mongoose.connect(mongoURI, {
-      dbName: 'ssci',
+      dbName: databaseName,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,

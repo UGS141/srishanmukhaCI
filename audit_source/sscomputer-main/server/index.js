@@ -360,6 +360,62 @@ app.put('/api/leads/:id/status', authenticateToken, authorizeRoles('SUPER ADMIN'
   }
 });
 
+app.post('/api/leads/:id/convert', authenticateToken, authorizeRoles('SUPER ADMIN', 'ADMIN', 'COUNSELLOR'), async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    let convertedStudent;
+    let convertedLead;
+    await session.withTransaction(async () => {
+      const lead = await Lead.findOne({ id: req.params.id }).session(session);
+      if (!lead) {
+        const error = new Error('Lead not found.');
+        error.statusCode = 404;
+        throw error;
+      }
+      if (lead.status === 'Converted') {
+        const error = new Error('Lead has already been converted.');
+        error.statusCode = 409;
+        throw error;
+      }
+
+      const studentId = `SSCI-STD-${new Date().getUTCFullYear()}-${Date.now().toString().slice(-6)}`;
+      const studentRecord = {
+        id: `STD-${Date.now().toString().slice(-8)}`,
+        studentId,
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email || `${lead.id.toLowerCase()}@student.ssci.invalid`,
+        course: lead.courseInterested || 'Computer Fundamentals',
+        batch: lead.preferredBatch || 'Regular Batch',
+        admissionDate: new Date().toISOString(),
+        status: 'Registered',
+        certificatesIssued: [],
+      };
+      const [student] = await Student.create([studentRecord], { session });
+      lead.status = 'Converted';
+      lead.updatedAt = new Date();
+      lead.timeline.unshift({
+        id: `t-${Date.now()}`,
+        title: 'Converted to Student',
+        description: `Admission created as ${studentId}.`,
+        timestamp: new Date().toISOString(),
+        type: 'status_change',
+      });
+      await lead.save({ session });
+      convertedStudent = student;
+      convertedLead = lead;
+    });
+
+    await logAudit(req.user.name, 'CONVERT_LEAD', 'CRM', `Converted lead "${req.params.id}" into a student.`);
+    res.json({ success: true, lead: convertedLead, student: convertedStudent });
+  } catch (err) {
+    const statusCode = err.statusCode || (err.code === 11000 ? 409 : 500);
+    res.status(statusCode).json({ success: false, message: statusCode === 500 ? 'Unable to convert lead right now.' : err.message });
+  } finally {
+    await session.endSession();
+  }
+});
+
 // ----------------------------------------------------
 // CERTIFICATE VERIFICATION APIs
 // ----------------------------------------------------

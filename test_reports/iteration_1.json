@@ -1,0 +1,62 @@
+{
+  "summary": "Reviewed the SSCI source audit slice, ran Node syntax checks and a production frontend build, inspected auth/RBAC/CRM flows, and attempted the configured public URL. Build and syntax passed, but the public URL serves an unrelated Emergent placeholder, so live SSCI API and UI flows could not be verified.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "server/config/db.js",
+        "issue": "Database connection reads MONGODB_URI and hardcodes dbName='ssci', while the required deployment contract mandates MONGO_URL and DB_NAME. The Phase 1 backend can connect to the wrong configuration or fail in the target environment.",
+        "priority": "CRITICAL"
+      },
+      {
+        "endpoint": "server/seed.js",
+        "issue": "Seed code still falls back to admin@sscomputer.in/admin123 when seed environment variables are absent. No seed or destructive command was run, but this is an unsafe default credential path that should be removed before production use.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "server/index.js CORS",
+        "issue": "CORS permits every origin whenever NODE_ENV is not production; confirm deployment always sets production mode and consider explicit allowlist behavior for all environments."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Configured public deployment",
+        "issue": "https://ssci-education-suite.preview.emergentagent.com serves the generic Emergent 'Building something incredible' placeholder rather than SSCI. /admin did not redirect and no SSCI login fields were present; this prevents live validation of public routes, auth, enquiry submission, logout, and CRUD integrations.",
+        "affected_selectors": ["/admin", "input[type=\"email\"]", "input[type=\"password\"]"]
+      },
+      {
+        "flow": "Lead conversion",
+        "issue": "convertLeadToStudent always throws because no backend transaction endpoint exists; the enquiries page invokes it without awaiting or displaying the error, so the user can receive no actionable failure feedback.",
+        "affected_selectors": ["Convert to Registered SSCI Student"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Align server/config/db.js with MONGO_URL and DB_NAME without migrating or writing production data.",
+    "Remove default seed admin email/password fallbacks and require explicit credentials when seeding.",
+    "Deploy the SSCI frontend/backend to the configured public URL, then rerun auth, RBAC, logout, enquiry, course/batch, and CRM integration tests.",
+    "Implement a transactional lead-conversion backend endpoint and surface rejected conversion/status/note mutations in the UI."
+  ],
+  "critical_code_review_comments": [
+    "The source API client uses VITE_API_URL with a hardcoded production fallback instead of a required environment-only backend URL; verify this is intentional for the Vite app and remove hardcoded deployment URLs if not.",
+    "AdminLayout calls async logout without awaiting it before navigation; ensure logout completion/failure is handled so server revocation and client clearing are not silently raced."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_1.json"
+  ],
+  "success_rate": {
+    "backend": "0% live verification (source syntax passed)",
+    "frontend": "0% live SSCI verification (production build passed)"
+  },
+  "seed_data_creation": "None. No seed, CRUD, delete, migration, or cleanup command was run.",
+  "retest_needed": true,
+  "should_call_test_agent_after_fix": true,
+  "context_for_next_testing_agent": "Node --check and yarn build passed in /app/audit_source/sscomputer-main. The configured preview URL is an unrelated Emergent placeholder, and /app supervisor serves a different FastAPI/React template. test_credentials.md contains no credentials; do not guess or create them. Existing mocked areas remain the simulated Media upload and hardcoded analytics.",
+  "rca of the issue": "Live-flow failure is deployment/environment mismatch: the configured public URL and supervisor services are not the audited SSCI Express/Vite app. Static RCA also identified a configuration contract mismatch in Mongo connection names and unsafe default seed credentials."
+}
