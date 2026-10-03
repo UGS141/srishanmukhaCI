@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Edit3, Trash2, Users, Clock } from 'lucide-react';
 import { cmsStore, type Batch } from '../cmsStore';
+import { ExportButton } from '../components/ExportButton';
 
 export const AdminBatchesPage: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>(cmsStore.getBatches());
@@ -81,13 +82,16 @@ export const AdminBatchesPage: React.FC = () => {
           <p className="text-xs text-gray-500 mt-1">Manage upcoming computer lab schedules, seat availability, and batch statuses</p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="py-2.5 px-4 rounded-xl brand-gradient-bg text-white text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create New Batch</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton dataset="batches" testIdPrefix="batches-export" filters={{}} />
+          <button
+            onClick={handleOpenCreate}
+            className="py-2.5 px-4 rounded-xl brand-gradient-bg text-white text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create New Batch</span>
+          </button>
+        </div>
       </div>
 
       {/* Batches Grid */}

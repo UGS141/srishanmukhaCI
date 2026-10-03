@@ -28,7 +28,8 @@ import {
   Command,
   UserCheck,
   Building2,
-  MessageSquare
+  MessageSquare,
+  Video
 } from 'lucide-react';
 import { cmsStore, type AdminUser, type Lead } from './cmsStore';
 import { apiService } from '../services/api';
@@ -114,6 +115,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       items: [
         { label: 'Courses CMS', path: '/admin/courses', icon: BookOpen },
         { label: 'Upcoming Batches', path: '/admin/batches', icon: Calendar },
+        { label: 'Online Classes', path: '/admin/online-classes', icon: Video },
       ],
     },
     {

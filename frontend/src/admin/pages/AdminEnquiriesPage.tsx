@@ -16,6 +16,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { cmsStore, type Lead } from '../cmsStore';
+import { ExportButton } from '../components/ExportButton';
 
 export const AdminEnquiriesPage: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>(cmsStore.getLeads());
@@ -113,6 +114,14 @@ export const AdminEnquiriesPage: React.FC = () => {
           <span className="px-3 py-1.5 rounded-xl bg-orange-100 text-[#F97316] text-xs font-bold">
             {leads.filter((l) => l.status === 'New').length} Unread Leads
           </span>
+          <ExportButton
+            dataset="enquiries"
+            testIdPrefix="enquiries-export"
+            filters={{
+              status: activeTab === 'all' ? '' : activeTab === 'new' ? 'New' : activeTab === 'followup' ? 'Follow-up' : activeTab === 'converted' ? 'Converted' : activeTab === 'closed' ? 'Closed' : activeTab === 'interested' ? 'Interested' : '',
+              search: searchQuery || '',
+            }}
+          />
         </div>
       </div>
 

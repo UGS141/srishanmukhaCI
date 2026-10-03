@@ -149,6 +149,71 @@ export const apiService = {
     return await apiService.request('/api/audit-logs');
   },
 
+  // Dashboard analytics (Phase 2)
+  getDashboardAnalytics: async () => {
+    return await apiService.request('/api/dashboard/analytics');
+  },
+
+  // Online Classes (Phase 2)
+  getOnlineClasses: async (query?: { status?: string; courseSlug?: string; search?: string }) => {
+    const qs = query
+      ? '?' + Object.entries(query).filter(([, v]) => v).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&')
+      : '';
+    return await apiService.request(`/api/online-classes${qs}`);
+  },
+  getOnlineClassBySlug: async (slug: string) => {
+    return await apiService.request(`/api/online-classes/${encodeURIComponent(slug)}`);
+  },
+  saveOnlineClass: async (payload: any) => {
+    return await apiService.request('/api/online-classes', 'POST', payload);
+  },
+  updateOnlineClass: async (slug: string, payload: any) => {
+    return await apiService.request(`/api/online-classes/${encodeURIComponent(slug)}`, 'PUT', payload);
+  },
+  deleteOnlineClass: async (slug: string) => {
+    return await apiService.request(`/api/online-classes/${encodeURIComponent(slug)}`, 'DELETE');
+  },
+
+  // Filtered exports (Phase 2). Uses fetch directly because responses are binary blobs.
+  downloadExport: async (
+    dataset: 'enquiries' | 'students' | 'batches',
+    format: 'csv' | 'xlsx' | 'pdf',
+    filters: Record<string, string | undefined> = {}
+  ): Promise<{ success: boolean; message?: string }> => {
+    const token = localStorage.getItem('ssci_jwt_token');
+    const params = new URLSearchParams({ format });
+    for (const [k, v] of Object.entries(filters)) {
+      if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+    }
+    const url = `${API_BASE_URL}/api/exports/${dataset}?${params.toString()}`;
+    try {
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) {
+        let msg = `Export failed with status ${res.status}.`;
+        try { const data = await res.json(); msg = data?.message || msg; } catch (_) { /* non-json */ }
+        return { success: false, message: msg };
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const match = /filename="?([^";]+)"?/i.exec(disposition);
+      const filename = match ? match[1] : `ssci-${dataset}.${format}`;
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Network error during export.' };
+    }
+  },
+
   // Courses API
   saveCourse: async (courseData: any) => {
     return await apiService.request('/api/courses', 'POST', courseData);

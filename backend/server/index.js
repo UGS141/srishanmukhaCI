@@ -8,6 +8,11 @@ import jwt from 'jsonwebtoken';
 import { connectDB } from './config/db.js';
 import { authenticateToken, authorizeRoles } from './middleware/auth.js';
 
+// Modular routers (added for live dashboard, online classes, filtered exports)
+import dashboardRouter from './routes/dashboard.js';
+import onlineClassesRouter from './routes/onlineClasses.js';
+import exportsRouter from './routes/exports.js';
+
 // Models
 import { AdminUser } from './models/AdminUser.js';
 import { Course } from './models/Course.js';
@@ -117,6 +122,13 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// ----------------------------------------------------
+// MODULAR ROUTERS (Dashboard analytics, Online classes, Filtered exports)
+// ----------------------------------------------------
+app.use('/api/dashboard', dashboardRouter);
+app.use('/api/online-classes', onlineClassesRouter);
+app.use('/api/exports', exportsRouter);
 
 // ----------------------------------------------------
 // AUTHENTICATION APIs

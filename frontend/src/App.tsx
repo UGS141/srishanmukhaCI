@@ -39,6 +39,7 @@ import { AdminCourseEditorPage } from './admin/pages/AdminCourseEditorPage';
 import { AdminBatchesPage } from './admin/pages/AdminBatchesPage';
 import { AdminEnquiriesPage } from './admin/pages/AdminEnquiriesPage';
 import { AdminStudentsPage } from './admin/pages/AdminStudentsPage';
+import { AdminOnlineClassesPage } from './admin/pages/AdminOnlineClassesPage';
 import { AdminTrainersPage } from './admin/pages/AdminTrainersPage';
 import { AdminContentPage } from './admin/pages/AdminContentPage';
 import { AdminCertificatesPage } from './admin/pages/AdminCertificatesPage';
@@ -103,6 +104,7 @@ export const App: React.FC = () => {
                 <Route path="/courses/new" element={<AdminCourseEditorPage />} />
                 <Route path="/courses/edit/:slug" element={<AdminCourseEditorPage />} />
                 <Route path="/batches" element={<AdminBatchesPage />} />
+                <Route path="/online-classes" element={<AdminOnlineClassesPage />} />
                 <Route path="/enquiries" element={<AdminEnquiriesPage />} />
                 <Route path="/students" element={<AdminStudentsPage />} />
                 <Route path="/trainers" element={<AdminTrainersPage />} />

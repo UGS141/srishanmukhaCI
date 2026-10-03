@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search, Plus, Award, CheckCircle2 } from 'lucide-react';
 import { cmsStore, type Student } from '../cmsStore';
+import { ExportButton } from '../components/ExportButton';
 
 export const AdminStudentsPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>(cmsStore.getStudents());
@@ -28,6 +29,11 @@ export const AdminStudentsPage: React.FC = () => {
           <h1 className="text-2xl font-extrabold text-[#123B3A]">Students & Admissions</h1>
           <p className="text-xs text-gray-500 mt-1">Manage active enrolled students, batches, and certificates</p>
         </div>
+        <ExportButton
+          dataset="students"
+          testIdPrefix="students-export"
+          filters={{ search: searchQuery || '' }}
+        />
       </div>
 
       <div className="bg-white p-4 rounded-2xl border border-teal-100/70 shadow-2xs flex items-center justify-between">
