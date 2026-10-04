@@ -318,6 +318,20 @@ class TestExports:
         r = s.get(f"{BASE_URL}/api/exports/enquiries?format=xml", headers=admin_headers)
         assert r.status_code == 400
 
+    def test_filename_shapes_slugified(self, s, admin_headers):
+        """Content-Disposition filename must be ssci-{dataset-slug}-{14digit}.{ext} (no '&')."""
+        for ds, label_slug, fmt in [
+            ("enquiries", "enquiries-leads", "csv"),
+            ("students", "students-roster", "xlsx"),
+            ("batches", "batches-schedule", "pdf"),
+        ]:
+            r = s.get(f"{BASE_URL}/api/exports/{ds}?format={fmt}", headers=admin_headers)
+            assert r.status_code == 200, r.text[:200]
+            cd = r.headers.get("Content-Disposition", "")
+            assert "&" not in cd, f"{ds} filename contains '&': {cd}"
+            pattern = rf'attachment; filename="ssci-{label_slug}-\d{{14}}\.{fmt}"'
+            assert re.search(pattern, cd), f"{ds}/{fmt} Content-Disposition mismatch: {cd}"
+
 
 # ---------------- Phase 1 regression smoke ----------------
 class TestPhase1Regression:
